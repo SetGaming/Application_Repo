@@ -96,6 +96,16 @@ AWS_WRAPPER
                 sh '''
                     set -e
 
+                    AWS_REGION="${AWS_REGION:-us-east-1}"
+                    ECR_REPOSITORY="${ECR_REPOSITORY:-calculator-app}"
+                    APP_HOST="${APP_HOST:-10.0.4.23}"
+                    APP_PORT="${APP_PORT:-5000}"
+
+                    export AWS_REGION
+                    export ECR_REPOSITORY
+                    export APP_HOST
+                    export APP_PORT
+
                     AWS_ACCOUNT_ID="$(
                         aws sts get-caller-identity \
                             --query Account \
@@ -121,6 +131,10 @@ AWS_WRAPPER
                     IMAGE_REF="${IMAGE_URI}:${IMAGE_TAG}"
 
                     cat > .pipeline.env <<PIPELINE_ENV
+AWS_REGION=${AWS_REGION}
+ECR_REPOSITORY=${ECR_REPOSITORY}
+APP_HOST=${APP_HOST}
+APP_PORT=${APP_PORT}
 AWS_ACCOUNT_ID=${AWS_ACCOUNT_ID}
 ECR_REGISTRY=${ECR_REGISTRY}
 IMAGE_URI=${IMAGE_URI}
