@@ -29,7 +29,7 @@ pipeline {
         string(
             name: 'APP_HOST',
             defaultValue: '10.0.4.23',
-            description: 'Application EC2 private IP address'
+            description: 'Production EC2 private IP address'
         )
 
         string(
@@ -153,13 +153,6 @@ PIPELINE_ENV
         }
 
         stage('Build Container Image') {
-            when {
-                anyOf {
-                    changeRequest target: 'master'
-                    branch 'master'
-                }
-            }
-
             steps {
                 sh '''
                     set -e
@@ -178,12 +171,49 @@ PIPELINE_ENV
             }
         }
 
-        stage('Test') {
-            when {
-                anyOf {
-                    changeRequest target: 'master'
-                    branch 'master'
+        stage('CI - Unit Tests') {
+            steps {
+                sh '''
+                    set -e
+
+                    set -a
+                    . ./.pipeline.env
+                    set +a
+
+                    rm -rf test-results
+                    mkdir -p test-results/unit
+                    chmod -R 0777 test-results
+
+                    docker run --rm \
+                        -v "$WORKSPACE/test-results:/test-results" \
+                        "${IMAGE_REF}" \
+                        python -m pytest \
+                            -v \
+                            tests/test_calculator_logic.py \
+                            --junitxml="/test-results/unit/unit.xml"
+                '''
+            }
+
+            post {
+                always {
+                    junit(
+                        testResults: 'test-results/unit/*.xml',
+                        allowEmptyResults: false,
+                        keepLongStdio: true
+                    )
+
+                    archiveArtifacts(
+                        artifacts: 'test-results/unit/*.xml',
+                        allowEmptyArchive: false,
+                        fingerprint: true
+                    )
                 }
+            }
+        }
+
+        stage('CD - Integration Tests') {
+            when {
+                branch 'master'
             }
 
             steps {
@@ -194,38 +224,29 @@ PIPELINE_ENV
                     . ./.pipeline.env
                     set +a
 
-                    rm -rf test-results
-                    mkdir -p test-results
-                    chmod 0777 test-results
-
-                    if [ "$FLOW" = "pr" ]; then
-                        TEST_PATHS="tests/test_calculator_logic.py"
-                        REPORT_NAME="pr-unit.xml"
-                    else
-                        TEST_PATHS="tests/test_calculator_logic.py tests/test_calculator_app_integration.py"
-                        REPORT_NAME="master-unit-integration.xml"
-                    fi
+                    mkdir -p test-results/integration
+                    chmod -R 0777 test-results
 
                     docker run --rm \
                         -v "$WORKSPACE/test-results:/test-results" \
                         "${IMAGE_REF}" \
                         python -m pytest \
                             -v \
-                            $TEST_PATHS \
-                            --junitxml="/test-results/${REPORT_NAME}"
+                            tests/test_calculator_app_integration.py \
+                            --junitxml="/test-results/integration/integration.xml"
                 '''
             }
 
             post {
                 always {
                     junit(
-                        testResults: 'test-results/*.xml',
+                        testResults: 'test-results/integration/*.xml',
                         allowEmptyResults: false,
                         keepLongStdio: true
                     )
 
                     archiveArtifacts(
-                        artifacts: 'test-results/*.xml',
+                        artifacts: 'test-results/integration/*.xml',
                         allowEmptyArchive: false,
                         fingerprint: true
                     )
@@ -285,7 +306,7 @@ PIPELINE_ENV
             }
         }
 
-        stage('Deploy to Application EC2') {
+        stage('Deploy to Production EC2') {
             when {
                 branch 'master'
             }
