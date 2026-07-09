@@ -73,6 +73,7 @@ AWS_WRAPPER
 
                     docker --version
                     git --version
+                    git config --global --add safe.directory "$WORKSPACE"
                     aws --version
                     ssh -V
                 '''
