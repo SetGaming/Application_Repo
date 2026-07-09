@@ -182,6 +182,7 @@ PIPELINE_ENV
 
                     rm -rf test-results
                     mkdir -p test-results
+                    chmod 0777 test-results
 
                     if [ "$FLOW" = "pr" ]; then
                         TEST_PATHS="tests/test_calculator_logic.py"
