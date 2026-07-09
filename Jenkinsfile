@@ -53,9 +53,23 @@ pipeline {
                     apk add --no-cache \
                         bash \
                         git \
-                        aws-cli \
                         openssh-client \
                         curl
+
+                    cat > /usr/local/bin/aws <<'AWS_WRAPPER'
+#!/bin/sh
+exec docker run --rm \
+    --network host \
+    -e AWS_REGION \
+    -e AWS_DEFAULT_REGION \
+    -e AWS_PAGER \
+    public.ecr.aws/aws-cli/aws-cli:2.33.15 "$@"
+AWS_WRAPPER
+
+                    chmod +x /usr/local/bin/aws
+
+                    docker pull \
+                        public.ecr.aws/aws-cli/aws-cli:2.33.15
 
                     docker --version
                     git --version
